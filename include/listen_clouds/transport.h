@@ -10,10 +10,10 @@ typedef struct lc_ws_client lc_ws_client_t;
 typedef enum { LC_WS_CONNECTED, LC_WS_DISCONNECTED, LC_WS_ERROR, LC_WS_TEXT, LC_WS_BINARY } lc_ws_event_type_t;
 typedef struct {
     lc_ws_event_type_t type;
-    lc_v1_event_t text;
-    const uint8_t *binary;
-    size_t binary_len;
+    const uint8_t *data;
+    size_t length;
 } lc_ws_event_t;
+/* data is borrowed from WebSocket and valid only during the callback. */
 typedef void (*lc_ws_callback_t)(void *ctx, const lc_ws_event_t *event);
 
 typedef struct {

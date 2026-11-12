@@ -12,3 +12,6 @@ cc -std=c11 -Wall -Wextra -Werror -fsanitize=address,undefined \
   -I"$root/include" -I"$json" "$root/tests/protocol_test.c" \
   "$root/src/protocol.c" "$json/cJSON.c" -o "$build/protocol_test"
 "$build/protocol_test"
+cc -std=c11 -Wall -Wextra -Werror -fsanitize=address,undefined \
+  -I"$root/include" "$root/tests/frame_test.c" "$root/src/frame.c" -o "$build/frame_test"
+"$build/frame_test"

@@ -26,3 +26,11 @@ typedef struct {
 
 /* Only complete text frames; caller must reassemble fragmented WebSocket frames. */
 lc_status_t lc_v1_parse_event(const char *data, size_t length, lc_v1_event_t *out);
+/* Activation response, optional websocket credentials are copied, never logged. */
+typedef struct {
+    char code[64];
+    char challenge[192];
+    char url[256];
+    char token[192];
+} lc_activation_t;
+lc_status_t lc_v1_parse_activation(const char *data, size_t length, lc_activation_t *out);

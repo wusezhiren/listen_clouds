@@ -2,7 +2,6 @@
 
 #include <stdio.h>
 #include <stdlib.h>
-#include <stdlib.h>
 #include <string.h>
 #include "cJSON.h"
 
@@ -110,4 +109,36 @@ lc_status_t lc_v1_parse_event(const char *data, size_t length, lc_v1_event_t *ou
     cJSON_Delete(root);
     free(input);
     return result;
+}
+
+lc_status_t lc_v1_parse_activation(const char *data, size_t length, lc_activation_t *out)
+{
+    if (!data || !length || length > 16383 || !out) return LC_ERR_ARGUMENT;
+    *out = (lc_activation_t){0};
+    char *input = malloc(length + 1);
+    if (!input) return LC_ERR_SIZE;
+    memcpy(input, data, length);
+    input[length] = 0;
+    cJSON *root = cJSON_ParseWithOpts(input, NULL, 1);
+    free(input);
+    if (!cJSON_IsObject(root)) { cJSON_Delete(root); return LC_ERR_ARGUMENT; }
+    cJSON *activation = cJSON_GetObjectItemCaseSensitive(root, "activation");
+    cJSON *websocket = cJSON_GetObjectItemCaseSensitive(root, "websocket");
+    bool ok = cJSON_IsObject(activation) &&
+        copy_field(out->code, sizeof(out->code),
+            cJSON_GetStringValue(cJSON_GetObjectItemCaseSensitive(activation, "code"))) &&
+        copy_field(out->challenge, sizeof(out->challenge),
+            cJSON_GetStringValue(cJSON_GetObjectItemCaseSensitive(activation, "challenge")));
+    if (ok && cJSON_IsObject(websocket)) {
+        ok = copy_field(out->url, sizeof(out->url),
+                 cJSON_GetStringValue(cJSON_GetObjectItemCaseSensitive(websocket, "url"))) &&
+             copy_field(out->token, sizeof(out->token),
+                 cJSON_GetStringValue(cJSON_GetObjectItemCaseSensitive(websocket, "token")));
+    }
+    ok = ok && out->code[0] && out->challenge[0] &&
+         ((!out->url[0] && !out->token[0]) ||
+          (out->url[0] && out->token[0] && !strncmp(out->url, "wss://", 6)));
+    cJSON_Delete(root);
+    if (!ok) { *out = (lc_activation_t){0}; return LC_ERR_ARGUMENT; }
+    return LC_OK;
 }

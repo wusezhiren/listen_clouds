@@ -1,4 +1,5 @@
 #include "listen_clouds/transport.h"
+#include "listen_clouds/frame.h"
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -19,30 +20,27 @@ static void on_ws_event(void *arg, esp_event_base_t base, int32_t id, void *data
     (void)base;
     lc_ws_client_t *client = arg;
     if (!client || !client->callback) return;
-    lc_ws_event_t *event = calloc(1, sizeof(*event));
-    if (!event) return;
+    lc_ws_event_t event = {0};
     switch (id) {
-    case WEBSOCKET_EVENT_CONNECTED: event->type = LC_WS_CONNECTED; break;
-    case WEBSOCKET_EVENT_DISCONNECTED: event->type = LC_WS_DISCONNECTED; break;
-    case WEBSOCKET_EVENT_ERROR: event->type = LC_WS_ERROR; break;
+    case WEBSOCKET_EVENT_CONNECTED: event.type = LC_WS_CONNECTED; break;
+    case WEBSOCKET_EVENT_DISCONNECTED: event.type = LC_WS_DISCONNECTED; break;
+    case WEBSOCKET_EVENT_ERROR: event.type = LC_WS_ERROR; break;
     case WEBSOCKET_EVENT_DATA: {
         const esp_websocket_event_data_t *frame = data;
-        if (!frame || frame->data_len <= 0 || frame->payload_offset != 0 ||
-            frame->data_len != frame->payload_len) return;
+        if (!frame || !lc_ws_frame_complete(frame->data_len, frame->payload_len,
+                                             frame->payload_offset, 8192)) return;
         if (frame->op_code == WS_TRANSPORT_OPCODES_BINARY) {
-            event->type = LC_WS_BINARY;
-            event->binary = (const uint8_t *)frame->data_ptr;
-            event->binary_len = frame->data_len;
+            event.type = LC_WS_BINARY;
         } else if (frame->op_code == WS_TRANSPORT_OPCODES_TEXT) {
-            event->type = LC_WS_TEXT;
-            if (lc_v1_parse_event(frame->data_ptr, frame->data_len, &event->text) != LC_OK) { free(event); return; }
+            event.type = LC_WS_TEXT;
         } else return;
+        event.data = (const uint8_t *)frame->data_ptr;
+        event.length = frame->data_len;
         break;
     }
     default: return;
     }
-    client->callback(client->context, event);
-    free(event);
+    client->callback(client->context, &event);
 }
 
 esp_err_t lc_ws_start(lc_ws_client_t **client, const lc_ws_config_t *config)

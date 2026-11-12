@@ -41,7 +41,24 @@ int main(void)
     assert(lc_v1_parse_event("{broken", 7, &event) == LC_ERR_ARGUMENT);
     assert(lc_v1_parse_event(hello, 5, &event) == LC_ERR_ARGUMENT);
     assert(lc_v1_parse_event(hello, strlen(hello), NULL) == LC_ERR_ARGUMENT);
+    assert(lc_v1_parse_event("{} trailing", 11, &event) == LC_ERR_ARGUMENT);
+    assert(lc_v1_parse_event(hello, 8193, &event) == LC_ERR_ARGUMENT);
+    const char bad_mcp[] = "{\"type\":\"mcp\",\"payload\":[]}";
+    assert(lc_v1_parse_event(bad_mcp, strlen(bad_mcp), &event) == LC_ERR_ARGUMENT);
     const char bad_hello[] = "{\"type\":\"hello\",\"transport\":\"udp\"}";
     assert(lc_v1_parse_event(bad_hello, strlen(bad_hello), &event) == LC_ERR_ARGUMENT);
+    lc_activation_t activation;
+    const char activation_json[] = "{\"activation\":{\"code\":\"123456\",\"challenge\":\"abc\"},\"websocket\":{\"url\":\"wss://example.test\",\"token\":\"secret\"}}";
+    assert(lc_v1_parse_activation(activation_json, strlen(activation_json), &activation) == LC_OK);
+    assert(!strcmp(activation.code, "123456") && !strcmp(activation.token, "secret"));
+    assert(lc_v1_parse_activation("{}", 2, &activation) == LC_ERR_ARGUMENT);
+    assert(lc_v1_parse_activation("{} trailing", 11, &activation) == LC_ERR_ARGUMENT);
+    assert(lc_v1_parse_activation(activation_json, 16384, &activation) == LC_ERR_ARGUMENT);
+    const char incomplete_activation[] = "{\"activation\":{\"code\":\"1\",\"challenge\":\"x\"},\"websocket\":{\"url\":\"wss://x\"}}";
+    assert(lc_v1_parse_activation(incomplete_activation, strlen(incomplete_activation), &activation) == LC_ERR_ARGUMENT);
+    const char bad_url[] = "{\"activation\":{\"code\":\"1\",\"challenge\":\"x\"},\"websocket\":{\"url\":\"http://x\",\"token\":\"secret\"}}";
+    assert(lc_v1_parse_activation(bad_url, strlen(bad_url), &activation) == LC_ERR_ARGUMENT);
+    const char no_credentials[] = "{\"activation\":{\"code\":\"1\",\"challenge\":\"x\"}}";
+    assert(lc_v1_parse_activation(no_credentials, strlen(no_credentials), &activation) == LC_OK);
     puts("voice v1 protocol tests passed");
 }
