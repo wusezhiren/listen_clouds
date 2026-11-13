@@ -57,8 +57,11 @@ esp_err_t lc_ws_start(lc_ws_client_t **client, const lc_ws_config_t *config)
     next->context = config->context;
     esp_websocket_client_config_t ws_config = {
         .uri = config->url, .headers = next->headers,
-        .crt_bundle_attach = esp_crt_bundle_attach, .buffer_size = 2048,
-        .task_stack = 6144, .reconnect_timeout_ms = 10000,
+         /* Keep the WebSocket/TLS peak below the free internal-RAM margin
+          * while I2S duplex and Opus are active. Frames are already bounded
+          * by the protocol layer, so a smaller transport buffer is enough. */
+         .crt_bundle_attach = esp_crt_bundle_attach, .buffer_size = 1024,
+         .task_stack = 4096, .reconnect_timeout_ms = 10000,
     };
     next->handle = esp_websocket_client_init(&ws_config);
     if (!next->handle) { free(next); return ESP_ERR_NO_MEM; }
